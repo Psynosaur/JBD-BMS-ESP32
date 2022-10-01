@@ -4,8 +4,9 @@ static BLEAdvertisedDevice *myDevice;
 BLERemoteService *pRemoteService;
 // The remote service we wish to connect to. Needs check/change when other BLE module used.
 static BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); //xiaoxiang bms original module
-static BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); //xiaoxiang bms original module
 static BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); //xiaoxiang bms original module
+static BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); //xiaoxiang bms original module
+
 // 0000ff01-0000-1000-8000-00805f9b34fb
 // NOTIFY, READ
 // Notifications from this characteristic is received data from BMS
@@ -27,9 +28,11 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
         // We have found a device, let us now see if it contains the service we are looking for.
         if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID))
         {
-
+            commSerial.println("BLEDevice::getScan()->stop()");
             BLEDevice::getScan()->stop();
+            commSerial.println("myDevice = new BLEAdvertisedDevice(advertisedDevice)");
             myDevice = new BLEAdvertisedDevice(advertisedDevice);
+            commSerial.println("set doConnect and doScan");
             doConnect = true;
             doScan = true;
 
@@ -47,7 +50,7 @@ class MyClientCallback : public BLEClientCallbacks
     {
         BLE_client_connected = false;
         commSerial.println("onDisconnect");
-        lcdDisconnect();
+        // lcdDisconnect();
     }
 };
 
@@ -63,11 +66,11 @@ void bleRequestData()
         if (connectToServer())
         {
             commSerial.println("We are now connected to the BLE Server.");
-            lcdConnected();
+            // lcdConnected();
         }
         else
         {
-            lcdConnectionFailed();
+            // lcdConnectionFailed();
         }
         doConnect = false;
     }
@@ -81,7 +84,7 @@ void bleRequestData()
         if ((currentMillis - previousMillis >= interval || newPacketReceived)) //every time period or when packet is received
         {
             previousMillis = currentMillis;
-            showInfoLcd();
+            // showInfoLcd();
 
             if (toggle) //alternate info3 and info4
             {
@@ -89,7 +92,7 @@ void bleRequestData()
                 //showBasicInfo();
                 newPacketReceived = false;
             }
-            else
+            if (!toggle)
             {
                 bmsGetInfo4();
                 //showCellInfo();
@@ -119,11 +122,17 @@ void bleStartup()
     // Retrieve a Scanner and set the callback we want to use to be informed when we
     // have detected a new device.  Specify that we want active scanning and start the
     // scan to run for 5 seconds.
+    commSerial.println("BLEDevice::getScan");
     BLEScan *pBLEScan = BLEDevice::getScan();
+    commSerial.println("pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks())");
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    commSerial.println("setInterval(1349)");
     pBLEScan->setInterval(1349);
+    commSerial.println("setWindow(449)");
     pBLEScan->setWindow(449);
+    commSerial.println("setActiveScan(true)");
     pBLEScan->setActiveScan(true);
+    commSerial.println("start(5, true)");
     pBLEScan->start(5, true);
 #endif
 }
@@ -139,43 +148,43 @@ bool connectToServer()
 {
     TRACE;
     commSerial.print("Forming a connection to ");
-    lcdConnectingStatus(0);
+    // lcdConnectingStatus(0);
     commSerial.println(myDevice->getAddress().toString().c_str());
     BLEClient *pClient = BLEDevice::createClient();
     commSerial.println(" - Created client");
-    lcdConnectingStatus(1);
+    // lcdConnectingStatus(1);
     pClient->setClientCallbacks(new MyClientCallback());
 
     // Connect to the remove BLE Server.
     pClient->connect(myDevice); // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
     commSerial.println(" - Connected to server");
-    lcdConnectingStatus(2);
+    // lcdConnectingStatus(2);
     // Obtain a reference to the service we are after in the remote BLE server.
     //BLERemoteService*
     pRemoteService = pClient->getService(serviceUUID);
     if (pRemoteService == nullptr)
     {
         commSerial.print("Failed to find our service UUID: ");
-        lcdConnectingStatus(3);
+        // lcdConnectingStatus(3);
         commSerial.println(serviceUUID.toString().c_str());
         pClient->disconnect();
         return false;
     }
     commSerial.println(" - Found our service");
-    lcdConnectingStatus(4);
+    // lcdConnectingStatus(4);
 
     // Obtain a reference to the characteristic in the service of the remote BLE server.
     pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID_rx);
     if (pRemoteCharacteristic == nullptr)
     {
         commSerial.print("Failed to find our characteristic UUID: ");
-        lcdConnectingStatus(5);
+        // lcdConnectingStatus(5);
         commSerial.println(charUUID_rx.toString().c_str());
         pClient->disconnect();
         return false;
     }
     commSerial.println(" - Found our characteristic");
-    lcdConnectingStatus(6);
+    // lcdConnectingStatus(6);
     // Read the value of the characteristic.
     if (pRemoteCharacteristic->canRead())
     {
@@ -188,6 +197,7 @@ bool connectToServer()
         pRemoteCharacteristic->registerForNotify(notifyCallback);
 
     BLE_client_connected = true;
+    return true;
 }
 
 void sendCommand(uint8_t *data, uint32_t dataLen)
@@ -199,7 +209,7 @@ void sendCommand(uint8_t *data, uint32_t dataLen)
     if (pRemoteCharacteristic)
     {
         pRemoteCharacteristic->writeValue(data, dataLen);
-        //commSerial.println("bms request sent");
+        // commSerial.println("bms request sent");
     }
     else
     {
