@@ -10,3 +10,4 @@ thanks to Milan Petrzilka
 The goal is to have the ESP32 be a webserver for this BMS information
   - It should also feed information to a database over http over LAN / Internet
   - A nice website to view the info would be awesome
+  - https://gitlab.com/bms-tools/bms-tools/-/blob/master/JBD_REGISTER_MAP.md
